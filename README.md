@@ -203,7 +203,7 @@ npm install -g vercel
 vercel login
 ```
 
-========================================
+___ 
 
 ## App Router
 ![](https://velog.velcdn.com/images/vekkary/post/d245f7ef-c248-49f0-930a-bdf09b36a8ec/image.png)
