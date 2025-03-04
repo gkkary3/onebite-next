@@ -196,11 +196,140 @@ On-Demand ISR(요청을 받을 떄 마다 페이지를 다시 생성하는 ISR)�
 기존에     revalidate: 3, // 재검증 3초 <<을 지우고, api 라우터를 새로 만들어
 localhost:3000/api/revalidate 경로로 요청을 보내면 index 페이지를 재생성하게 된다.
 
-출처: 한 입 크기로 잘라먹는 Next.js
-
 ## 배포하기
 ``` js
 npm install -g vercel
 
 vercel login
 ```
+
+========================================
+
+## App Router
+![](https://velog.velcdn.com/images/vekkary/post/d245f7ef-c248-49f0-930a-bdf09b36a8ec/image.png)
+- 동적 경로
+![](https://velog.velcdn.com/images/vekkary/post/57e55f2c-68b0-46b8-82c2-17cbf2b2588b/image.png)
+
+- localhost:3000/search?q=1
+[src/app/search/page.tsx]
+``` js
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ q: string }>;
+}) {
+  const { q } = await searchParams;
+  return <div>Search 페이지 : {q}</div>;
+}
+
+```
+- localhost:3000/book/1
+[src/app/book/[id]/page.tsx]
+
+```js
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  return <div>book/ [id] 페이지 : {id}</div>;
+}
+
+```
+
+## 레이아웃 설정
+![](https://velog.velcdn.com/images/vekkary/post/31c2cbcd-85da-405d-9294-a99733f67b65/image.png)
+### 라우트 그룹(경로에 영향을 미치지 않는 폴더)
+[src/app/[with-searchbar]]]
+: 하나의 소괄호()로 된 폴더를 만들어 놓고, 해당 폴더에 page.tsx를 넣으면 
+경로에 영향을 미치지 않지만 해당 폴더 내에 layout.tsx를 만들어 놓으면, 해당 폴더내에 있는 page.tsx에만 layout이 적용이 되어 유용하게 쓰일 수 있다.
+![](https://velog.velcdn.com/images/vekkary/post/de73d834-b88c-4832-8445-b6ee46cec20a/image.png)
+book 폴더의 page.tsx에는 layout이 적용이 안된다.
+
+## Server Component vs Client Component
+- Server Component: 서버측에서만 실행되는 컴포넌트 (브라우저 실행 X)
+App Router에서는 기본적으로 Server Component를 사용한다. (useEffect, useState 사용 불가능)
+하지만 경우에 따라 상호작용이 있어야 하는 컴포넌트만 Client Component를 사용하면 된다.
+사용 법은 상단에 "use client"를 적어주면 Server Component -> Client Component로 적용된다.
+
+```js
+"use client";
+
+import { useState } from "react";
+
+export default function Searchbar() {
+  const [search, setSearch] = useState("");
+
+  const onChangeSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  };
+
+  return (
+    <div>
+      <input value={search} onChange={onChangeSearch} />
+      <button>검색</button>
+    </div>
+  );
+}
+```
+### 주의사항
+![](https://velog.velcdn.com/images/vekkary/post/6f0991d3-1c15-466c-a10e-074ca85be179/image.png)
+
+## 네비게이팅
+[src/app/layout.tsx]
+``` js
+	return (
+    <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <header>
+          <Link href={"/"}>index</Link>
+          &nbsp;
+          <Link href={"/search"}>Search</Link>
+          &nbsp;
+          <Link href={"/book/1"}>book/1</Link>
+        </header>
+        {children}
+      </body>
+    </html>
+  );
+```
+import Link from "next/link";
+를 통해 네비게이팅이 가능하다. 
+
+```js
+	import { useRouter } from "next/navigation";
+	export default function Searchbar() {
+    	const router = useRouter();
+		
+		...
+
+    const onSubmit = () => {
+      router.push(`/search?q=${search}`);
+    };
+    return (
+      <div>
+        <input value={search} onChange={onChangeSearch} />
+        <button onClick={onSubmit}>검색</button>
+      </div>
+    );
+```
+import { useRouter } from "**next/navigation**";
+useRouter를 통해서 	프로그래매틱한 페이지 이동도 가능하다.
+주의) Page Router 버전에서는 from '**next/router**'; 를 사용
+
+## Pre-Fetching
+: 데이터를 미리 가져와 빠르게 화면을 렌더링
+Link 태그 사용 시 자동으로 pre-fetching 지원
+
+## 데이터 패칭
+### In Page Router
+![](https://velog.velcdn.com/images/vekkary/post/905786d4-cf61-4a2f-ba16-4f0e1d75d1c5/image.png)
+![](https://velog.velcdn.com/images/vekkary/post/81dc4279-56e2-4cac-8303-8a7cd7994792/image.png)
+
+### In App Router
+![](https://velog.velcdn.com/images/vekkary/post/a44014aa-d028-433e-ae74-32eae4c1fb10/image.png)
+=> 기존의 getServerSideProps, getStaticProps ...를 대체한다!!
+
+
