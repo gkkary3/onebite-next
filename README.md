@@ -1,4 +1,4 @@
-- Next.js의 Page Router 방식과 App Router 방식을 익힘.
+# Next.js의 Page Router 방식과 App Router 방식을 익힘.
 ## Page Router
 : Pages 폴더의 구조를 기반으로 페이지 라우팅을 제공
 - 일반 경로
