@@ -1,210 +1,3 @@
-# Next.js의 Page Router 방식과 App Router 방식을 익힘.
-## Page Router
-: Pages 폴더의 구조를 기반으로 페이지 라우팅을 제공
-- 일반 경로
-![](https://velog.velcdn.com/images/vekkary/post/bb5b4328-c446-4f75-8fc4-693890610f55/image.png)
-![](https://velog.velcdn.com/images/vekkary/post/3be068d4-2ed8-4e29-b794-373d000a1bce/image.png)
-
-- 동적 경로
-![](https://velog.velcdn.com/images/vekkary/post/e960012c-8d9e-4cc7-a7bd-5aea9a096b72/image.png)
-
-## Next App 생성
-```
-npx create-next-app@14 
-```
-
-## Navigating
-``` js
-import "@/styles/globals.css";
-import type { AppProps } from "next/app";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import { useEffect } from "react";
-
-export default function App({ Component, pageProps }: AppProps) {
-  const router = useRouter();
-
-  const onClickButton = () => {
-    router.push("/test");
-  };
-
-  useEffect(() => {
-    router.prefetch("/test");
-  }, []);
-  return (
-    <>
-      <header>
-        <Link href={"/"}>index</Link>
-        &nbsp;
-        <Link href={"/search"} prefetch={false}>
-          search
-        </Link>
-        &nbsp;
-        <Link href={"/book/1"}>book/1</Link>
-        <div>
-          <button onClick={onClickButton}>/test 페이지로 이동</button>
-        </div>
-      </header>
-      <Component {...pageProps} />
-    </>
-  );
-}
-
-```
-
-next/link의 Link를 import하여 href에 해당 경로를 적어주기만 하면 된다.
-```js
-  import Link from "next/link"; 
-   ...
-  <Link href={"/book"}>book</Link>
-```
-신세계다!! 아래 기존 React-Router 방식에서 아주 편리한 기능을 보여준다.
-```js
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-
-const router = createBrowserRouter([
-  {
-    path: "/book",
-    element: <book />,
-  },
-]);
-
-function App() {
-  return <RouterProvider router={router} />;
-}
-
-```
-
-## SSR(Server Side Rendering)
-- 가장 기본적인 사전 렌더링 방식
-- 요청이 들어올 떄 마다 사전 렌더링을 진행
-![](https://velog.velcdn.com/images/vekkary/post/411b7a6b-1d00-4790-8171-d198ab54259c/image.png)
-
-Next.js의 index.tsx에서 아래 getServerSideProps 함수를 설정하면 자동으로 SSR이 설정된다. 즉, localstorage:3000을 접속 시 getServerSideProps가 실행되고 return 문의 객체로 묶어준 data를 Home Component의 props로 전달된다.
-``` javascript
-	export const getServerSideProps = () => {
-  // component보다 먼저 실행되어, 필요한 데이터를 불러오는 함수
-  // 서버측에서 실행되는 함수 
-      
-    const data = "hello";
-    return {
-      props: {
-        data,
-      },
-    };
-};
-
-    export default function Home({ data }: any) {
-      console.log(data);
-```
-## SSG(Static Site Generation)
-- SSR의 단점을 해결하는 사전 렌더링 방식
-- 빌드 타임에 페이지를 미리 사전렌더링
-``` javascript
-  export const getStaticProps = () => {
-    // component보다 먼저 실행되어, 필요한 데이터를 불러오는 함수
-    // 서버측에서 실행되는 함수 
-
-    const data = "hello";
-    return {
-      props: {
-        data,
-      },
-    };
-  };
-
-  export default function Home({ data }: any) {
-    console.log(data);
-```
-
-### 동적 경로에 SSG 적용
-![](https://velog.velcdn.com/images/vekkary/post/7c266af3-f4ba-47d5-b9e4-4615f7298329/image.png)
-
-- GetStaticPaths 
-: 현재 페이지에 존재할 수 있는 경로들을 설정
-> book/[id].tsx
-> - id: 1
-> - id: 2
-> - id: 3
-> 일 떄 GetStaticPaths를 통해 3개의 경로를 설정
-
-```js
-	export const getStaticPaths = () => {
-    return {
-      paths: [
-        { params: { id: "1" } },
-        { params: { id: "2" } },
-        { params: { id: "3" } },
-      ],
-      // 위 id 경로외 다른 경로가 올 떄 대비책 => false 시 404NotFound
-      fallback: false,
-    };
-};
-```
-## ISR(Incremental Static Regeneration)
-- SSR 방식으로 생성된 정적 페이지를 일정 시간을 주기로 다시 생성
-- SSG + SSR
-![](https://velog.velcdn.com/images/vekkary/post/c3e74b0b-59c8-4e72-8d2e-b8fe31cfcfbc/image.png)
-
-```js
-	//2. SSG 동작
-export const getStaticProps = async () => {
-  // component보다 먼저 실행되어, 필요한 데이터를 불러오는 함수
-
-  console.log("인덱스 페이지");
-  // 동시에 병렬로 호출
-  const [allBooks, recoBooks] = await Promise.all([
-    fetchBooks(),
-    fetchRandomBooks(),
-  ]);
-
-  return {
-    props: { allBooks, recoBooks },
-    revalidate: 3, // 재검증 3초
-  };
-};
-```
-```
-    revalidate: 3, // 재검증 3초
-```
-기존 SSG방식인 getStaticProps에서 revalidate 속성을 추가해주면 3초 후 새 페이지를 렌더링 한다.
-
-Next.js에서는 ISR방식으로 사용하는 걸 추천한다!!
-
-하지만, ISR 방식을 사용할 떄 문제가 발생할 수 있다. 
-예를 들어, 시간을 기반으로한 요청이 아닌 행동을 기반으로 한 페이지를 렌더링 할 때, 
-즉, 사용자가 어떤 이벤트를 발생 시키고 페이지가 새로 렌더링되어야 할 때는 
-On-Demand ISR(요청을 받을 떄 마다 페이지를 다시 생성하는 ISR)을 사용한다.
-
-- localhost:3000/api/revalidate
-```js
-	import type { NextApiRequest, NextApiResponse } from "next";
-
-    export default async function handler(
-      req: NextApiRequest,
-      res: NextApiResponse
-    ) {
-      try {
-        await res.revalidate("/"); //index 페이지를 재생성
-        return res.json({ revalidate: true });
-      } catch (err) {
-        if (err) return res.status(500).send("Revalidation Failed");
-      }
-    }
-
-```
-기존에     revalidate: 3, // 재검증 3초 <<을 지우고, api 라우터를 새로 만들어
-localhost:3000/api/revalidate 경로로 요청을 보내면 index 페이지를 재생성하게 된다.
-
-## 배포하기
-``` js
-npm install -g vercel
-
-vercel login
-```
-
-___ 
-
 ## App Router
 ![](https://velog.velcdn.com/images/vekkary/post/d245f7ef-c248-49f0-930a-bdf09b36a8ec/image.png)
 - 동적 경로
@@ -332,4 +125,191 @@ Link 태그 사용 시 자동으로 pre-fetching 지원
 ![](https://velog.velcdn.com/images/vekkary/post/a44014aa-d028-433e-ae74-32eae4c1fb10/image.png)
 => 기존의 getServerSideProps, getStaticProps ...를 대체한다!!
 
+## 데이터 캐시
+fetch 메서드를 활용해 불러온 데이터를 Next 서버에서 보관하는 기능
+: 영구적으로 데이터를 보관 / 특정 시간을 주기로 갱신 
+=> 불 필요한 데이터 요청의 수를 줄여 웹 서비스 성능을 크게 개선
 
+![](https://velog.velcdn.com/images/vekkary/post/fc2b44ed-6671-4dd0-8cbe-ca75a38c905c/image.png)
+=> 오직 fetch 메서드에서만 활용 가능
+### { cache: "no-store"}
+- 데이터 패칭의 결과를 저장하지 않는 옵션
+- 캐싱을 아예 하지 않도록 설정하는 옵션
+![](https://velog.velcdn.com/images/vekkary/post/cf73df46-6bd3-4bbf-a0ab-49377c472ce9/image.png)
+### { cache: "force-cache"}
+- 요청의 결과를 무조건 캐싱
+- 한번 호출 된 이후에는 다시는 호출되지 않음
+![](https://velog.velcdn.com/images/vekkary/post/2701ef8b-74d4-45e2-801c-281d9b4204a1/image.png)
+### { next: {revalidate: 3 }}
+- 특정 시간을 주기로 캐시를 업데이트 함
+- 마치 Page Router의 ISR 방식과 유사 함
+![](https://velog.velcdn.com/images/vekkary/post/43d52a83-8ba9-41f8-a048-8e3d09d80194/image.png)
+![](https://velog.velcdn.com/images/vekkary/post/90d4a2a0-f538-436c-8775-2278ca67c31d/image.png)
+### { next: {tags: ['a'] }}
+- On-Demand Revalidate
+- 요청이 들어왔을 떄 데이터를 최신화 함
+
+## 리퀘스트 메모이제이션
+- 요청을 기억함
+- 같은 요청을 여러개 보낼 떄 중복된 API 요청을 하나의 요청으로 자동으로 합쳐줌. 
+![](https://velog.velcdn.com/images/vekkary/post/1ebc8da5-07a9-41cb-b05c-7eaa93d7e783/image.png)
+
+## 페이지 캐싱
+### 풀 라우트 캐시
+Next 서버측에서 빌드 타임에 특정 페이지의 렌더링 결과를 캐싱하는 기능
+![](https://velog.velcdn.com/images/vekkary/post/698ca6c7-716a-4c20-b4d3-1d94ccae9364/image.png)
+![](https://velog.velcdn.com/images/vekkary/post/a6e67510-2cee-4980-be84-fdcc8c521ba3/image.png)
+정적(Static) 페이지에서만 풀 라우트 캐시를 적용해서 빠른 속도로 처리 가능
+=> { cache: "force-cache" }를 fetch함수에서 적용해주면 된다.
+#### 동적 경로에 generateStaticParams
+정적인 param을 빌드 타임에 만들어내는 기능
+```js
+export function generateStaticParams() {
+  return [{ id: "1" }, { id: "2" }, { id: "3" }];
+}
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string | string[] }>;
+}) {
+  const param = await Promise.resolve(params); // `params`를 비동기적으로 해석
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_SERVER_URL}/book/${param.id}`
+  );
+```
+generateStaticParams 안에 배열로 특정 id를 설정해서 빌드 타임에 호출하여
+속도가 빠르게 가능하다.
+특정 id가 설정된 param 외에 호출이 될 시에 실시간으로 동적 페이지로 만들어진다.
+
+
+### 라우트 세그먼트 옵션
+특정 페이지에 캐싱이나 Revalidate 동작을 강제로 설정할 수 있게해주는 옵션
+```js
+export const dynamicParmas = false;
+// 정적인 param을 빌드 타임에 만들어내는 기능
+export function generateStaticParams() {
+  return [{ id: "1" }, { id: "2" }, { id: "3" }];
+}
+```
+
+generateStaticParams으로 설정된 param 외에 호출 시 
+dynamicParmas = false 옵션으로 강제로 404 Page로 이동
+
+``` js
+export const dynamic = "force-dynamic";
+// 특정 페이지의 유형을 강제로 Static, Dynamic 페이지로 설정
+// 1. auto : 기본 값, 아무것도 강제하지 않음.
+// 2. force-dynamic : 페이지를 강제로 Dynamic 페이지로 설정
+// 3. force-static : 페이지를 강제로 Static 페이지로 설정
+// 4. error : 페이지를 강제로 Static 페이지로 설정 (설정하면 안되는 이유 => 빌드 오류)
+```
+### 클라이언트 라우터 캐시
+- 브라우저에 저장되는 캐시 
+- 페이지 이동을 효율적으로 진행하기 위헤 일부 데이터를 보관
+![](https://velog.velcdn.com/images/vekkary/post/d18525e5-19f1-4e99-8f69-f9aa24161d11/image.png)
+현재 ~/(index) 와 ~/search를 호출할 때 공통된 레이아웃(루트, 서치바)컴포너트를 호출하게되는데, 이것을 불필요한 동작이기 때문에 
+~/(index)를 호출 할 때 공통된 레이아웃을 캐시하여 ~/search를 호출할 떄 캐시된 공통된 레이아웃은 빠르게 가져오고, 나머지 필요한 페이지 및 기타는 새로 요청해서 불러오게 되는 기능이다.
+
+## 페이지 스트리밍(loading.tsx)
+- 데이터를 패칭 전 서버에서 HTML을 점진적으로 전송하여 사용자가 더 빠르게 콘텐츠를 볼 수 있도록 하는 기술이다. 
+![](https://velog.velcdn.com/images/vekkary/post/f33447ed-ad1f-4d04-b89f-fad250877b9f/image.png)
+search 폴더에 loading.tsx를 생성해주면 자동으로 페이지 스트리밍이 적용됨.
+단, 비동기 페이지 컴포넌트에서만 사용 가능하다.
+## 컴포넌트 스트리밍(Suspense Component)
+``` js
+... 
+
+async function SearchResult({ q }: { q: string }) {
+  await delay(1500);
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_SERVER_URL}/book/search?q=${q}`,
+    { cache: "force-cache" }
+  );
+
+  if (!response.ok) {
+    return <div>오류가 발생했습니다..</div>;
+  }
+
+ ...
+
+}
+
+export default function Page({
+  searchParams,
+}: {
+  searchParams: {
+    q?: string;
+  };
+}) {
+ 
+  return (
+    <Suspense key={searchParams.q || ""} fallback={<div>Loading ...</div>}>
+      <SearchResult q={searchParams.q || ""} />;
+    </Suspense>
+  );
+}
+
+
+```
+페이지 스트리밍 시 loading.tsx를 사용하는 대신에 SusPense를 이용해
+SearchResult를 Suspense로 묶어서 fallback 시 대체 UI로서 Loading ...이 표시된다.
+
+Suspense 컴포넌트는 한 페이지 내에 비동기 작업이 여러 개가 있을 떄 진가를 발휘한다. 
+
+### 스켈레톤 UI 적용하기
+``` js
+	        <Suspense
+          fallback={
+            <>
+              <BookItemSkeleton />
+            </>
+          }
+        >
+```
+fallback 속성에 대체될 Component를 적어주면 된다.
+![](https://velog.velcdn.com/images/vekkary/post/e95f7bf8-8ef7-4f5a-8faa-e4410857b9a4/image.png)
+
+## 에러 핸들링
+fetch 호출 시 try-catch 구문으로 전부 에러를 핸들링 하기에는 손이 많이 가는 문제점이 발생한다. 그래서 Next.js에서는 페이지 경로에  error.tsx를 만들어 주면 자동으로 에러를 핸들링 한다.
+![](https://velog.velcdn.com/images/vekkary/post/c80db297-0c6d-4452-9476-a809376dd165/image.png)
+
+``` js
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  const router = useRouter();
+  useEffect(() => {
+    console.log(error.message);
+  }, [error]);
+  return (
+    <div>
+      <h3>오류가 발생했습니다.( {error.message} )</h3>
+      <button
+        onClick={() => {
+          startTransition(() => {
+            router.refresh(); // 현재 페이지에 필요한 서버컴포넌트들을 다시 불러옴
+            reset(); // 에러 상태를 초기화, 컴포넌트들을 다시 렌더링
+          });
+        }}
+      >
+        다시 시도
+      </button>
+    </div>
+  );
+}
+
+```
+props로 error를 받으면 error의 message 출력이 가능하고, 
+오류 발생시 router의 refresh함수를 통해서 현재 페이지의 서버컴포넌트의 fetch 데이터를 다시 불러와 데이터를 재랜더링하고 오류 페이지를 없앨 수 있다. 
+이 때, router.refresh()는 비동기함수인데,reset()이 먼저 실행이 되는 문제가 발생해 이럴 떄는 startTransition을 이용해 
+순차적으로 실행이 되게끔 콜백함수를 적어주면 된다.
