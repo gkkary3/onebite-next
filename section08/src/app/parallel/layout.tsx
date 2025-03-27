@@ -17,7 +17,6 @@ export default function Layout({
         &nbsp;
         <Link href={"/parallel/setting"}>parallel/setting</Link>
       </div>
-      <br />
       {sidebar}
       {feed}
       {children}
