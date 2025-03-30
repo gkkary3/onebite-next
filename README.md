@@ -218,8 +218,40 @@ export async function createReviewAction(_: any, formData: FormData) {
 ### 2.1 Parallel Routes (병렬 라우팅)
 동시에 여러 페이지를 보여줄 수 있는 기능입니다.
 
+#### 프로젝트 구조:
+```
+app/
+├── @modal/
+│   └── (.)book/
+│       └── [id]/
+│           └── page.tsx    # 모달로 표시될 책 상세 페이지
+├── book/
+│   └── [id]/
+│       └── page.tsx        # 일반 책 상세 페이지
+└── layout.tsx              # 루트 레이아웃
+```
+
+#### 구현 코드:
 ```typescript
-// @modal 슬롯을 사용한 병렬 라우팅
+// app/layout.tsx
+export default function RootLayout({ 
+  children,
+  modal
+}: { 
+  children: React.ReactNode
+  modal: React.ReactNode 
+}) {
+  return (
+    <html>
+      <body>
+        {children}
+        {modal}
+      </body>
+    </html>
+  );
+}
+
+// app/@modal/(.)book/[id]/page.tsx
 export default function BookModal({ params }: { params: { id: string } }) {
   return (
     <Modal>
@@ -232,14 +264,74 @@ export default function BookModal({ params }: { params: { id: string } }) {
 ### 2.2 Intercepting Routes (경로 가로채기)
 현재 레이아웃을 유지하면서 다른 경로의 내용을 보여줄 수 있습니다.
 
+#### 프로젝트 구조:
+```
+app/
+├── (with-searchbar)/
+│   ├── page.tsx            # 메인 페이지
+│   └── (..)book/[id]/     # 인터셉트된 책 상세 페이지
+│       └── page.tsx
+├── book/
+│   └── [id]/
+│       └── page.tsx        # 기본 책 상세 페이지
+└── layout.tsx
+```
+
+#### 구현 코드:
 ```typescript
-// (..) 를 사용하여 상위 경로로 이동하면서 현재 컨텍스트 유지
+// app/(with-searchbar)/(..)book/[id]/page.tsx
+export default function InterceptedBookPage({ params }: { params: { id: string } }) {
+  return (
+    <Modal>
+      <BookDetail id={params.id} />
+    </Modal>
+  );
+}
+
+// app/book/[id]/page.tsx
 export default function BookPage({ params }: { params: { id: string } }) {
   return <BookDetail id={params.id} />;
 }
 ```
 
-### 2.3 네비게이션
+### 2.3 그룹 라우팅
+관련된 라우트들을 그룹화하여 관리할 수 있습니다.
+
+#### 프로젝트 구조:
+```
+app/
+├── (with-searchbar)/      # 검색바가 필요한 페이지들
+│   ├── layout.tsx         # 검색바를 포함한 레이아웃
+│   ├── page.tsx           # 메인 페이지
+│   └── search/
+│       └── page.tsx       # 검색 결과 페이지
+└── (marketing)/          # 마케팅 관련 페이지들
+    ├── about/
+    │   └── page.tsx
+    └── contact/
+        └── page.tsx
+```
+
+#### 구현 코드:
+```typescript
+// app/(with-searchbar)/layout.tsx
+export default function SearchbarLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <Suspense fallback={<div>Loading ...</div>}>
+        <Searchbar />
+      </Suspense>
+      {children}
+    </div>
+  );
+}
+```
+
+### 2.4 네비게이션 처리
 클라이언트 컴포넌트에서의 네비게이션 처리:
 
 ```typescript
@@ -250,14 +342,49 @@ export default function Searchbar() {
   const searchParams = useSearchParams();
   
   const onSubmit = () => {
+    // 프로그래매틱 네비게이션
     router.push(`/search?q=${search}`);
   };
 
+  // 뒤로가기
+  const handleBack = () => {
+    router.back();
+  };
+
+  // 현재 페이지 새로고침
+  const handleRefresh = () => {
+    router.refresh();
+  };
+
   return (
-    // ... 검색바 UI
+    <div className={style.container}>
+      <input
+        value={search}
+        onChange={onChangeSearch}
+        onKeyDown={onKeyDown}
+      />
+      <button onClick={onSubmit}>검색</button>
+    </div>
   );
 }
 ```
+
+## 라우팅 패턴 사용 시 주의사항
+
+1. **병렬 라우트 (@folder)**
+   - 같은 레이아웃에서 동시에 여러 페이지 렌더링 가능
+   - 독립적인 에러/로딩 처리 가능
+   - 모달이나 사이드바에 적합
+
+2. **인터셉트 라우트 ((..)folder)**
+   - 현재 레이아웃 유지하면서 다른 라우트 표시
+   - 모달이나 슬라이드오버에 적합
+   - URL 구조 유지하면서 다른 뷰 제공
+
+3. **그룹 라우트 ((folder))**
+   - 공통 레이아웃이나 설정을 공유하는 페이지들을 그룹화
+   - URL 구조에는 영향을 주지 않음
+   - 코드 구조화에 도움
 
 ## 3. 검색엔진 최적화 (SEO)
 
