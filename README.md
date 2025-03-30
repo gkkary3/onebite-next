@@ -181,4 +181,3 @@ export default async function Page({ params: { id } }) {
 
 ---
 
-이 가이드는 Next.js의 고급 기능들을 실제 프로젝트 코드와 함께 설명했습니다. 각 기능의 실제 구현이나 추가 예제가 필요하시다면 말씀해 주세요! 😊
