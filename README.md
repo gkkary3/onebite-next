@@ -1,3 +1,167 @@
+# Next.js 프로젝트 완벽 가이드 📚
+
+## 목차
+1. [Next.js란?](#1-nextjs란)
+2. [프로젝트 구조](#2-프로젝트-구조)
+3. [주요 기능 설명](#3-주요-기능-설명)
+4. [실제 코드로 보는 Next.js](#4-실제-코드로-보는-nextjs)
+5. [성능 최적화](#5-성능-최적화)
+
+## 1. Next.js란?
+Next.js는 React 기반의 웹 프레임워크입니다. 쉽게 말해서, React로 웹사이트를 만들 때 필요한 여러 기능들을 미리 준비해둔 도구상자라고 생각하면 됩니다.
+
+### 1.1 Next.js의 장점
+- 📱 서버 사이드 렌더링 (SSR) 지원
+- 🚀 빠른 페이지 로딩
+- 🛠 자동 코드 분할
+- 📂 파일 기반 라우팅
+- 🎨 스타일링 지원
+
+## 2. 프로젝트 구조
+
+우리 프로젝트는 다음과 같은 구조로 되어있습니다:
+
+```
+src/
+├── app/                # 페이지와 라우팅을 담당
+├── components/         # 재사용 가능한 컴포넌트들
+├── actions/           # 서버에서 실행되는 함수들
+├── mock/             # 테스트용 가짜 데이터
+├── util/             # 유용한 도구 함수들
+└── types.ts          # 타입스크립트 타입 정의
+```
+
+### 2.1 각 폴더의 역할
+- **app**: 웹사이트의 페이지들이 있는 곳
+- **components**: 여러 곳에서 재사용되는 부품들
+- **actions**: 서버에서 실행되는 동작들
+- **mock**: 개발할 때 사용하는 테스트 데이터
+- **util**: 자주 사용하는 편리한 함수들
+
+## 3. 주요 기능 설명
+
+### 3.1 페이지 라우팅
+```typescript
+// app/page.tsx
+export default function Home() {
+  return <h1>홈페이지</h1>
+}
+
+// app/about/page.tsx
+export default function About() {
+  return <h1>소개 페이지</h1>
+}
+```
+
+### 3.2 서버 컴포넌트 vs 클라이언트 컴포넌트
+
+```typescript
+// 서버 컴포넌트 (기본값)
+export default async function ServerComponent() {
+  const data = await getData(); // 서버에서 직접 데이터 페칭
+  return <div>{data}</div>
+}
+
+// 클라이언트 컴포넌트
+'use client'
+export default function ClientComponent() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(count + 1)}>{count}</button>
+}
+```
+
+### 3.3 레이아웃 시스템
+```typescript
+// app/layout.tsx
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="ko">
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+## 4. 실제 코드로 보는 Next.js
+
+### 4.1 검색 기능 구현
+```typescript
+"use client";
+
+export default function Searchbar() {
+  const [search, setSearch] = useState("");
+  
+  return (
+    <div>
+      <input 
+        value={search} 
+        onChange={e => setSearch(e.target.value)}
+        placeholder="책 제목을 검색하세요"
+      />
+      <button>검색</button>
+    </div>
+  );
+}
+```
+
+### 4.2 에러 처리
+```typescript
+"use client";
+
+export default function Error({ error }) {
+  return (
+    <div>
+      <h3>앗! 에러가 발생했어요 😢</h3>
+      <button onClick={() => window.location.reload()}>
+        다시 시도하기
+      </button>
+    </div>
+  );
+}
+```
+
+## 5. 성능 최적화
+
+### 5.1 로딩 상태 처리
+```typescript
+<Suspense fallback={<div>로딩중...</div>}>
+  <BookList />
+</Suspense>
+```
+
+### 5.2 이미지 최적화
+```typescript
+import Image from 'next/image'
+
+<Image 
+  src="/book-cover.jpg"
+  width={200}
+  height={300}
+  alt="책 표지"
+/>
+```
+
+## 🎯 정리
+
+Next.js는 다음과 같은 장점이 있습니다:
+
+1. 📁 폴더만 만들면 자동으로 페이지가 생성됩니다.
+2. 🚀 서버에서 데이터를 가져와 빠른 로딩이 가능합니다.
+3. 🎨 이미지, 폰트 등을 자동으로 최적화해줍니다.
+4. 🛠 개발할 때 필요한 도구들이 미리 설정되어 있습니다.
+
+## 📚 추가 학습 자료
+- [Next.js 공식 문서](https://nextjs.org/docs)
+- [Next.js 학습 사이트](https://nextjs.org/learn)
+- [React 공식 문서](https://react.dev)
+
+---
+
+
 # Next.js 고급 기능 완벽 가이드 🚀
 
 ## 목차
