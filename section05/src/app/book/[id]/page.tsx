@@ -3,6 +3,7 @@ import style from "./page.module.css";
 
 //false 시  generateStaticParams안에 있는 param외에 404 Page로 보내버림.
 // export const dynamicParmas = false;
+export const dynamic = "force-dynamic";
 // 정적인 param을 빌드 타임에 만들어내는 기능
 export function generateStaticParams() {
   return [{ id: "1" }, { id: "2" }, { id: "3" }];

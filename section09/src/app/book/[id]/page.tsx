@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import style from "./page.module.css";
-import { ReviewData } from "@/types";
+import { BookData, ReviewData } from "@/types";
 import ReviewItem from "@/components/review-item";
 import ReviewEditor from "@/components/review-editor";
-import Image from "next/image";
+import { Metadata } from "next";
 
 //false 시  generateStaticParams안에 있는 param외에 404 Page로 보내버림.
-export const dynamicParmas = false;
+export const dynamic = "force-dynamic";
 // 정적인 param을 빌드 타임에 만들어내는 기능
 export function generateStaticParams() {
   return [{ id: "1" }, { id: "2" }, { id: "3" }];
@@ -34,12 +34,7 @@ async function BookDetail({ bookId }: { bookId: string }) {
         className={style.cover_img_container}
         style={{ backgroundImage: `url('${coverImgUrl}')` }}
       >
-        <Image
-          src={coverImgUrl}
-          width={240}
-          height={300}
-          alt={`도서 ${title}의 표지 이미지`}
-        />
+        <img src={coverImgUrl} />
       </div>
       <div className={style.title}>{title}</div>
       <div className={style.subTitle}>{subTitle}</div>
@@ -70,18 +65,67 @@ async function ReviewList({ bookId }: { bookId: string }) {
   );
 }
 
+//동적으로 meta data를 생성하는 역할
+export async function generateMetadata({
+  params,
+}: {
+  params: { id?: string };
+}): Promise<Metadata> {
+  const { id } = params;
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_SERVER_URL}/book/${id}`,
+    { cache: "force-cache" }
+  );
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
+  const book: BookData = await response.json();
+
+  return {
+    title: `${book.title} - 한입북스`,
+    description: `${book.description}`,
+    openGraph: {
+      title: `${book.title} - 한입북스`,
+      description: `${book.description}`,
+      images: [book.coverImgUrl],
+    },
+  };
+}
+
 export default async function Page({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const param = await Promise.resolve(params); // `params`를 비동기적으로 해석
+  const { id } = await Promise.resolve(params);
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_SERVER_URL}/book/${id}`
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      notFound();
+    }
+    return <div>오류가 발생했습니다...</div>;
+  }
+  const book = await response.json();
+  const {
+    id: bookId,
+    title,
+    subTitle,
+    description,
+    author,
+    publisher,
+    coverImgUrl,
+  } = book;
 
   return (
     <div className={style.container}>
-      <BookDetail bookId={param.id} />
-      <ReviewEditor bookId={param.id} />
-      <ReviewList bookId={param.id} />
+      <BookDetail bookId={bookId} />
+      <ReviewEditor bookId={bookId} />
+      <ReviewList bookId={bookId} />
     </div>
   );
 }
