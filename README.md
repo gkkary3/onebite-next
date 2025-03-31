@@ -1,158 +1,206 @@
-# Next.js 프로젝트 구조 및 기능 분석 📚
+# Next.js 프로젝트 상세 분석 및 기능 가이드 📚
+
+## 목차
+1. [프로젝트 구조](#1-프로젝트-구조)
+2. [라우팅 시스템](#2-라우팅-시스템)
+3. [데이터 페칭 전략](#3-데이터-페칭-전략)
+4. [서버/클라이언트 컴포넌트](#4-서버클라이언트-컴포넌트)
+5. [최적화 전략](#5-최적화-전략)
+6. [에러 처리](#6-에러-처리)
 
 ## 1. 프로젝트 구조
+
 ```
 src/
 ├── app/
-│   ├── (with-searchbar)/           # 검색바가 필요한 페이지들
-│   │   ├── layout.tsx              # 검색바 레이아웃
-│   │   ├── page.tsx                # 메인 페이지
-│   │   ├── search/                 # 검색 기능
-│   │   │   └── page.tsx
-│   │   └── error.tsx               # 에러 처리
+│   ├── @modal/                     # Parallel Routes
+│   │   └── (.)book/[id]/          # Intercepting Routes
+│   ├── (with-searchbar)/          # 그룹 라우팅
 │   ├── book/
-│   │   └── [id]/                   # 동적 라우팅
-│   │       ├── page.tsx
-│   │       └── error.tsx
-│   └── layout.tsx                  # 루트 레이아웃
+│   │   └── [id]/                  # 동적 라우팅
+│   └── layout.tsx
 ├── actions/
-│   └── create-review.action.ts     # 서버 액션
-├── components/                      # 재사용 컴포넌트
-└── types.ts                        # 타입 정의
+├── components/
+└── types.ts
 ```
 
-## 2. 주요 기능 구현
+## 2. 라우팅 시스템
 
-### 2.1 데이터 페칭 및 캐싱
-```typescript
-// src/app/(with-searchbar)/page.tsx
-async function AllBooks() {
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_SERVER_URL}/book`,
-    { cache: "force-cache" }  // 정적 캐싱
-  );
-  const allBooks: BookData[] = await response.json();
+### 2.1 Parallel Routes (@modal)
+```typescript:src/app/@modal/(.)book/[id]/page.tsx
+export default function BookModal({ params }: { params: { id: string } }) {
   return (
-    <div>
-      {allBooks.map((book) => (
-        <BookItem key={book.id} {...book} />
-      ))}
-    </div>
+    <Modal>
+      <BookDetail id={params.id} />
+    </Modal>
   );
 }
 ```
+- `@modal`: 병렬 라우트 슬롯
+- 메인 콘텐츠와 모달을 동시에 렌더링
 
-### 2.2 동적 라우팅 및 정적 생성
-```typescript
-// src/app/book/[id]/page.tsx
-export const dynamic = "force-dynamic";  // 동적 렌더링 강제
-
-export function generateStaticParams() {
-  return [{ id: "1" }, { id: "2" }, { id: "3" }];  // 빌드 시 정적 생성
-}
+### 2.2 Intercepting Routes
+```typescript:src/app/@modal/(.)book/[id]/page.tsx
+// (.) - 현재 레벨
+// (..) - 한 레벨 위
+// (...) - 루트 레벨
 ```
+- `(.)`: 현재 URL 구조 유지하며 다른 레이아웃 표시
+- 모달이나 슬라이드오버에 적합
 
-### 2.3 서버 액션
-```typescript
-// src/actions/create-review.action.ts
-"use server";
-export async function createReviewAction(_: any, formData: FormData) {
-  // ... 리뷰 생성 로직 ...
-  revalidateTag(`review-${bookId}`);  // 캐시 무효화
-}
-```
+### 2.3 모달 구현
+```typescript:src/components/modal.tsx
+"use client";
 
-### 2.4 레이아웃 시스템
-```typescript
-// src/app/(with-searchbar)/layout.tsx
-export default function Layout({ children }: { children: ReactNode }) {
-  return (
-    <div>
-      <Suspense fallback={<div>Loading ...</div>}>
-        <Searchbar />
-      </Suspense>
+export default function Modal({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  
+  return createPortal(
+    <dialog
+      onClose={() => router.back()}
+      onClick={(e) => {
+        if ((e.target as any).nodeName === "DIALOG") {
+          router.back();
+        }
+      }}
+    >
       {children}
-    </div>
+    </dialog>,
+    document.getElementById("modal-root") as HTMLElement
   );
 }
 ```
 
-### 2.5 메타데이터 관리
-```typescript
-// src/app/(with-searchbar)/search/page.tsx
+## 3. 최적화 전략
+
+### 3.1 이미지 최적화
+```typescript:src/components/book-item.tsx
+import Image from 'next/image';
+
+export default function BookItem({ coverImgUrl }: BookItemProps) {
+  return (
+    <Image
+      src={coverImgUrl}
+      alt="책 표지"
+      width={200}
+      height={300}
+      priority={true}  // LCP 최적화
+      quality={75}     // 품질 조정
+      placeholder="blur"  // 로딩 중 블러 효과
+    />
+  );
+}
+```
+- 자동 이미지 최적화
+- WebP 포맷 자동 변환
+- 레이지 로딩 자동 적용
+
+### 3.2 SEO 최적화
+```typescript:src/app/book/[id]/page.tsx
 export async function generateMetadata({
-  searchParams,
+  params,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  params: { id: string };
 }): Promise<Metadata> {
-  const { q } = await searchParams;
+  const book = await getBook(params.id);
+  
   return {
-    title: `${q} : 한입북스 검색`,
-    description: `${q}의 검색 결과입니다.`,
+    title: `${book.title} - 한입북스`,
+    description: book.description,
+    openGraph: {
+      title: `${book.title} - 한입북스`,
+      description: book.description,
+      images: [book.coverImgUrl],
+    },
+    alternates: {
+      canonical: `/book/${params.id}`,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    }
   };
 }
 ```
 
-### 2.6 에러 처리
-```typescript
-// src/app/book/[id]/error.tsx
-"use client";
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error;
-  reset: () => void;
-}) {
+### 3.3 정적 메타데이터
+```typescript:src/app/layout.tsx
+export const metadata: Metadata = {
+  metadataBase: new URL('https://example.com'),
+  title: {
+    template: '%s | 한입북스',
+    default: '한입북스 - 프로그래밍 도서 리뷰',
+  },
+  description: '프로그래밍 도서 리뷰 플랫폼',
+  keywords: ['프로그래밍', '도서', '리뷰'],
+};
+```
+
+## 4. 성능 최적화 패턴
+
+### 4.1 스트리밍과 Suspense
+```typescript:src/app/(with-searchbar)/page.tsx
+export default function Page() {
   return (
-    <div>
-      <h3>오류가 발생했습니다.({error.message})</h3>
-      <button onClick={() => reset()}>다시 시도</button>
-    </div>
+    <>
+      <Suspense fallback={<BookListSkeleton />}>
+        <AllBooks />
+      </Suspense>
+      <Suspense fallback={<RecommendSkeleton />}>
+        <RecommendBooks />
+      </Suspense>
+    </>
   );
 }
 ```
 
-## 3. 성능 최적화 전략
-
-### 3.1 Suspense를 통한 로딩 처리
-```typescript
-// src/app/(with-searchbar)/page.tsx
-<Suspense fallback={<BookListSkeleton count={10} />}>
-  <AllBooks />
-</Suspense>
-```
-
-### 3.2 캐시 전략
-1. **정적 캐싱**: `cache: "force-cache"`
-2. **재검증**: `next: { revalidate: 3 }`
-3. **태그 기반 재검증**: `revalidateTag()`
-
-### 3.3 동적/정적 렌더링 제어
-```typescript
+### 4.2 라우트 세그먼트 설정
+```typescript:src/app/book/[id]/page.tsx
 // 동적 렌더링 강제
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 // 정적 페이지 생성
-export function generateStaticParams() {
-  return [{ id: "1" }, { id: "2" }, { id: "3" }];
+export async function generateStaticParams() {
+  const books = await getBooks();
+  return books.map((book) => ({
+    id: book.id.toString(),
+  }));
 }
 ```
 
-## 4. 주요 패턴 및 베스트 프랙티스
+### 4.3 캐시 전략
+```typescript
+// 1. 영구 캐시
+const data = await fetch(URL, { cache: 'force-cache' });
 
-1. **서버/클라이언트 컴포넌트 분리**
-   - 서버 컴포넌트: 데이터 페칭, 메타데이터
-   - 클라이언트 컴포넌트: 상호작용, 이벤트 처리
+// 2. 재검증
+const data = await fetch(URL, { next: { revalidate: 3600 } });
 
-2. **에러 처리 계층화**
-   - 각 라우트별 에러 처리
-   - 글로벌 에러 처리
+// 3. 캐시 무효화
+revalidateTag('books');
+revalidatePath('/book/[id]');
+```
 
-3. **레이아웃 재사용**
-   - 그룹 라우팅으로 공통 레이아웃 관리
-   - Suspense를 통한 점진적 로딩
+## 5. 주요 패턴 및 베스트 프랙티스
 
-4. **데이터 관리**
+1. **라우팅 패턴**
+   - Parallel Routes로 모달 구현
+   - Intercepting Routes로 UX 향상
+   - 그룹 라우팅으로 코드 구조화
+
+2. **성능 최적화**
+   - 이미지 자동 최적화
+   - 메타데이터로 SEO 강화
+   - Suspense로 점진적 로딩
+
+3. **데이터 전략**
+   - 서버 컴포넌트에서 데이터 페칭
+   - 적절한 캐싱 전략 선택
    - 서버 액션으로 데이터 변경
-   - 캐시 무효화로 최신 데이터 유지
+
+4. **에러 처리**
+   - 라우트별 에러 처리
+   - 에러 복구 메커니즘
+   - 사용자 친화적 에러 UI
+
+---
