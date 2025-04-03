@@ -6,10 +6,20 @@ import ReviewEditor from "@/components/review-editor";
 import { Metadata } from "next";
 
 //false 시  generateStaticParams안에 있는 param외에 404 Page로 보내버림.
-export const dynamic = "force-dynamic";
+// export const dynamic = "force-dynamic";
 // 정적인 param을 빌드 타임에 만들어내는 기능
-export function generateStaticParams() {
-  return [{ id: "1" }, { id: "2" }, { id: "3" }];
+export async function generateStaticParams() {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_SERVER_URL}/book`
+  );
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+  const books: BookData[] = await response.json();
+
+  return books.map((book) => ({
+    id: book.id.toString(),
+  }));
 }
 
 async function BookDetail({ bookId }: { bookId: string }) {
